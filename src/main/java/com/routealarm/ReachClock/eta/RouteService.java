@@ -10,5 +10,7 @@ public interface RouteService {
 
     List<LatLng> route(double fromLat, double fromLng, double toLat, double toLng);
 
+    RouteDetail detailedRoute(double fromLat, double fromLng, double toLat, double toLng);
+
     void forget(UUID tripId);
 }

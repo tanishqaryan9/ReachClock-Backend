@@ -9,5 +9,11 @@ public record TripUpdateEvent(
         double longitude,
         long remainingSeconds,
         double distanceMeters,
-        long calculatedAtEpochMs
-) {}
+        long calculatedAtEpochMs,
+        String trafficCondition,
+        int delayMinutes
+) {
+    public TripUpdateEvent(UUID tripId, double latitude, double longitude, long remainingSeconds, double distanceMeters, long calculatedAtEpochMs) {
+        this(tripId, latitude, longitude, remainingSeconds, distanceMeters, calculatedAtEpochMs, "SMOOTH", 0);
+    }
+}

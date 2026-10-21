@@ -31,8 +31,7 @@ public class AlarmServiceImpl implements AlarmService {
         validateByType(r.type(), r.thresholdMinutes(), r.radiusMeters());
         Alarm alarm = new Alarm();
         alarm.setUserId(userId);
-        apply(alarm, r.type(), r.destinationName(), r.latitude(), r.longitude(),
-                r.thresholdMinutes(), r.radiusMeters());
+        apply(alarm, r.type(), r.destinationName(), r.latitude(), r.longitude(), r.thresholdMinutes(), r.radiusMeters());
         if (r.status() != null) alarm.setStatus(r.status());
         return CreateAlarmResponse.from(alarmRepository.save(alarm));
     }
@@ -41,8 +40,7 @@ public class AlarmServiceImpl implements AlarmService {
     public CreateAlarmResponse updateAlarm(UUID id, UUID userId, UpdateAlarmRequest r) {
         validateByType(r.type(), r.thresholdMinutes(), r.radiusMeters());
         Alarm alarm = find(id, userId);
-        apply(alarm, r.type(), r.destinationName(), r.latitude(), r.longitude(),
-                r.thresholdMinutes(), r.radiusMeters());
+        apply(alarm, r.type(), r.destinationName(), r.latitude(), r.longitude(), r.thresholdMinutes(), r.radiusMeters());
         alarm.setStatus(r.status());
         return CreateAlarmResponse.from(alarmRepository.save(alarm));
     }
@@ -64,8 +62,7 @@ public class AlarmServiceImpl implements AlarmService {
             throw new IllegalArgumentException("radiusMeters is required for " + type);
     }
 
-    private void apply(Alarm a, AlarmType type, String name, double lat, double lng,
-                       Integer threshold, Integer radius) {
+    private void apply(Alarm a, AlarmType type, String name, double lat, double lng, Integer threshold, Integer radius) {
         a.setType(type);
         a.setDestinationName(name);
         a.setLatitude(lat);

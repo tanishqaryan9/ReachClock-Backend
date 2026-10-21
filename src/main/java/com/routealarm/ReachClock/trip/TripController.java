@@ -1,6 +1,6 @@
 package com.routealarm.ReachClock.trip;
 
-import com.routealarm.ReachClock.eta.LatLng;
+import com.routealarm.ReachClock.eta.RouteDetail;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -36,12 +36,12 @@ public class TripController {
         return ResponseEntity.noContent().build();
     }
 
-    /** Road polyline from the given position to the trip destination (for the map). */
+    /** Turn-by-turn road polyline with real-time multi-segment traffic details. */
     @GetMapping("/{tripId}/route")
-    public List<LatLng> route(@PathVariable UUID tripId,
-                              @RequestAttribute("userId") UUID userId,
-                              @RequestParam double lat,
-                              @RequestParam double lng) {
-        return tripService.route(userId, tripId, lat, lng);
+    public RouteDetail route(@PathVariable UUID tripId,
+                             @RequestAttribute("userId") UUID userId,
+                             @RequestParam double lat,
+                             @RequestParam double lng) {
+        return tripService.detailedRoute(userId, tripId, lat, lng);
     }
 }

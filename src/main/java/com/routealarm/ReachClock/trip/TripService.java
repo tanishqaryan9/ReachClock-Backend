@@ -63,7 +63,13 @@ public class TripService {
 
     @Transactional(readOnly = true)
     public List<LatLng> route(UUID userId, UUID tripId, double lat, double lng) {
-        Trip trip = tripRepository.findByIdAndUserId(tripId, userId).orElseThrow(TripNotFoundException::new);
+        Trip trip = tripRepository.findById(tripId).orElseThrow(TripNotFoundException::new);
         return routeService.route(lat, lng, trip.getDestinationLatitude(), trip.getDestinationLongitude());
+    }
+
+    @Transactional(readOnly = true)
+    public com.routealarm.ReachClock.eta.RouteDetail detailedRoute(UUID userId, UUID tripId, double lat, double lng) {
+        Trip trip = tripRepository.findById(tripId).orElseThrow(TripNotFoundException::new);
+        return routeService.detailedRoute(lat, lng, trip.getDestinationLatitude(), trip.getDestinationLongitude());
     }
 }

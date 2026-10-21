@@ -65,7 +65,10 @@ public class LocationService {
 
             publisher.sendTripUpdate(user, new TripUpdateEvent(
                     trip.getId(), update.latitude(), update.longitude(),
-                    eta.remainingSeconds(), eta.distanceMeters(), eta.calculatedAt().toEpochMilli()));
+                    eta.remainingSeconds(), eta.distanceMeters(), eta.calculatedAt().toEpochMilli(),
+                    eta.trafficCondition(), eta.delayMinutes()));
+
+            sharingService.processShareEvents(trip, alarm, update, eta);
 
             if (etaAlarmService.shouldTrigger(trip, alarm, update, eta)) {
                 alarm.setStatus(AlarmStatus.TRIGGERED);
@@ -85,5 +88,6 @@ public class LocationService {
         trip.setEndedAt(Instant.now());
         tripRepository.save(trip);
         routeService.forget(trip.getId());
+        sharingService.endSharesForTrip(trip.getId(), status.name());
     }
 }

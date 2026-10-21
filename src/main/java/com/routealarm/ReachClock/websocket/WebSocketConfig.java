@@ -2,6 +2,7 @@ package com.routealarm.ReachClock.websocket;
 
 import com.routealarm.ReachClock.auth.AuthService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.Message;
@@ -20,6 +21,7 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 
 import java.util.UUID;
 
+@Slf4j
 @Configuration
 @EnableWebSocketMessageBroker
 @RequiredArgsConstructor
@@ -60,13 +62,21 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                         MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
                 if (accessor != null && StompCommand.CONNECT.equals(accessor.getCommand())) {
                     String header = accessor.getFirstNativeHeader("Authorization");
-                    UUID userId = (header != null && header.startsWith("Bearer "))
-                            ? authService.authenticate(header.substring(7).trim()).orElse(null)
+                    if (header == null) {
+                        header = accessor.getFirstNativeHeader("authorization");
+                    }
+                    if (header != null && header.startsWith("Bearer ")) {
+                        header = header.substring(7).trim();
+                    }
+                    UUID userId = (header != null && !header.isBlank())
+                            ? authService.authenticate(header).orElse(null)
                             : null;
                     if (userId == null) {
+                        log.warn("STOMP connection rejected: invalid or missing auth token");
                         throw new MessagingException("Unauthorized");
                     }
                     accessor.setUser(new StompPrincipal(userId.toString()));
+                    log.info("STOMP connection authenticated for user: {}", userId);
                 }
                 return message;
             }

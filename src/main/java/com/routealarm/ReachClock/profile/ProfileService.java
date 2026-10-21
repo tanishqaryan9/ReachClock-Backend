@@ -16,15 +16,13 @@ public class ProfileService {
 
     @Transactional(readOnly = true)
     public ProfileResponse getProfile(UUID userId) {
-        Device device = deviceRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("Device not found"));
+        Device device = deviceRepository.findById(userId).orElseThrow(() -> new IllegalArgumentException("Device not found"));
         return new ProfileResponse(device.getId(), device.getShareCode(), device.getDisplayName());
     }
 
     @Transactional
     public ProfileResponse updateDisplayName(UUID userId, UpdateProfileRequest request) {
-        Device device = deviceRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("Device not found"));
+        Device device = deviceRepository.findById(userId).orElseThrow(() -> new IllegalArgumentException("Device not found"));
         device.setDisplayName(request.displayName());
         deviceRepository.save(device);
         return new ProfileResponse(device.getId(), device.getShareCode(), device.getDisplayName());
@@ -32,8 +30,7 @@ public class ProfileService {
 
     @Transactional
     public void updatePushToken(UUID userId, String token) {
-        Device device = deviceRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("Device not found"));
+        Device device = deviceRepository.findById(userId).orElseThrow(() -> new IllegalArgumentException("Device not found"));
         device.setPushToken(token);
         deviceRepository.save(device);
     }

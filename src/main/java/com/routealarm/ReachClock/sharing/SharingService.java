@@ -1,6 +1,7 @@
 package com.routealarm.ReachClock.sharing;
 
 import com.routealarm.ReachClock.alarm.Alarm;
+import com.routealarm.ReachClock.alarm.AlarmRepository;
 import com.routealarm.ReachClock.auth.Device;
 import com.routealarm.ReachClock.auth.DeviceRepository;
 import com.routealarm.ReachClock.eta.EtaResult;
@@ -29,6 +30,7 @@ public class SharingService {
 
     private final TripShareRepository tripShareRepository;
     private final TripRepository tripRepository;
+    private final AlarmRepository alarmRepository;
     private final DeviceRepository deviceRepository;
     private final SimpMessagingTemplate messagingTemplate;
     private final SimpUserRegistry simpUserRegistry;
@@ -126,6 +128,13 @@ public class SharingService {
                     if (trip != null) {
                         destLat = trip.getDestinationLatitude();
                         destLng = trip.getDestinationLongitude();
+                        // Try to get destination name from the trip's alarm
+                        try {
+                            com.routealarm.ReachClock.alarm.Alarm a = alarmRepository
+                                    .findByIdAndUserId(trip.getAlarmId(), trip.getUserId())
+                                    .orElse(null);
+                            if (a != null) destinationName = a.getDestinationName();
+                        } catch (Exception ignored) {}
                     }
                     Long updatedAtMs = share.getLastUpdatedAt() != null
                             ? share.getLastUpdatedAt().toEpochMilli() : null;
@@ -177,7 +186,9 @@ public class SharingService {
                     eta.remainingSeconds(),
                     eta.distanceMeters(),
                     now.toEpochMilli(),
-                    "ACTIVE"
+                    "ACTIVE",
+                    eta.trafficCondition(),
+                    eta.delayMinutes()
             );
             sendToUser(share.getRecipientId().toString(), "/queue/share-updates", update);
 

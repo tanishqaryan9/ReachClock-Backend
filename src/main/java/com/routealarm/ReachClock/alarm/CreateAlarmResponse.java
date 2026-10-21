@@ -1,4 +1,3 @@
-// CreateAlarmResponse.java
 package com.routealarm.ReachClock.alarm;
 
 import java.time.Instant;
