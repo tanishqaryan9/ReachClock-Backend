@@ -21,7 +21,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
-@Service
+@Service("osrmRouteService")
 public class OsrmRouteService implements RouteService {
 
     private static final Duration REFRESH = Duration.ofSeconds(15);
