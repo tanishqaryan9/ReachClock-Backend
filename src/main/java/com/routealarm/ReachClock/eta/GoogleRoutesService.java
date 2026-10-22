@@ -135,27 +135,16 @@ public class GoogleRoutesService implements RouteService {
             return osrmFallback.calculateEta(tripId, fromLat, fromLng, toLat, toLng, speedMetersPerSecond);
         }
 
-        // Compute remaining road distance by finding user position on polyline
-        double straight = geo.distanceMeters(fromLat, fromLng, toLat, toLng);
-        double roadMeters = s.distanceMeters();
-        double traveled = Math.max(0, roadMeters - straight * 1.2);
-        double remainingMeters = Math.max(straight, roadMeters - traveled);
-
-        // Scale ETA proportionally to remaining distance
-        double fraction = (roadMeters > 0) ? (remainingMeters / roadMeters) : 1.0;
-        long remainingSec = Math.round(s.durationSeconds() * fraction);
-
-        // Adjust with live GPS speed if user is moving faster than the Google ETA implies
-        if (speedMetersPerSecond != null && speedMetersPerSecond > 1.0 && remainingMeters > 200) {
-            double speedEta = remainingMeters / speedMetersPerSecond;
-            // Blend: 60% Google traffic estimate, 40% live speed — keeps alarm responsive
-            remainingSec = Math.round(0.6 * remainingSec + 0.4 * speedEta);
-        }
+        Instant now = Instant.now();
+        long elapsed = Math.max(0, Duration.between(s.at(), now).toSeconds());
+        long remainingSec = Math.max(0, s.durationSeconds() - elapsed);
+        double distTraveled = (speedMetersPerSecond != null && speedMetersPerSecond > 0) ? speedMetersPerSecond * elapsed : 0;
+        double remainingMeters = Math.max(0, s.distanceMeters() - distTraveled);
 
         return new EtaResult(
-                Math.max(0, remainingSec),
+                remainingSec,
                 remainingMeters,
-                Instant.now(),
+                now,
                 s.trafficCondition(),
                 s.delaySeconds() / 60
         );
@@ -307,61 +296,49 @@ public class GoogleRoutesService implements RouteService {
         if (intervals.isEmpty()) {
             // No traffic data — return single smooth segment
             return new RouteAnalysis(List.of(
-                    new RouteSegmentDto(new ArrayList<>(poly), "SMOOTH", 50.0, 0)
+                    new RouteSegmentDto(new ArrayList<>(poly), "SMOOTH", 45.0, 0)
             ));
         }
 
         List<RouteSegmentDto> segments = new ArrayList<>();
-        String prevCond = null;
-        List<LatLng> curPoints = new ArrayList<>();
-        double curSpeedSum = 0;
-        int curCount = 0;
+        int lastCovered = 0;
+        int n = poly.size();
 
         for (GSpeedInterval interval : intervals) {
-            int start = interval.startPolylinePointIndex() != null ? interval.startPolylinePointIndex() : 0;
-            int end   = interval.endPolylinePointIndex()   != null ? interval.endPolylinePointIndex()   : Math.max(0, poly.size() - 1);
+            int start = interval.startPolylinePointIndex() != null ? interval.startPolylinePointIndex() : lastCovered;
+            int end   = interval.endPolylinePointIndex()   != null ? interval.endPolylinePointIndex()   : (n - 1);
 
-            // Clamp to valid polyline range
-            start = Math.max(0, Math.min(start, poly.size() - 1));
-            end   = Math.max(start, Math.min(end, poly.size() - 1));
+            start = Math.max(0, Math.min(start, n - 1));
+            end   = Math.max(start, Math.min(end, n - 1));
 
-            String cond = mapSpeed(interval.speed());
-            double speedKmh = speedKmhFromCondition(cond);
-
-            if (prevCond != null && !prevCond.equals(cond) && curPoints.size() > 1) {
-                double avgSpeedKmh = curCount > 0 ? curSpeedSum / curCount : speedKmh;
-                segments.add(new RouteSegmentDto(
-                        new ArrayList<>(curPoints),
-                        prevCond,
-                        Math.round(avgSpeedKmh * 10.0) / 10.0,
-                        0));
-                curPoints = new ArrayList<>();
-                curSpeedSum = 0;
-                curCount = 0;
+            // Gap fill before interval
+            if (start > lastCovered) {
+                List<LatLng> gap = new ArrayList<>(poly.subList(lastCovered, start + 1));
+                if (gap.size() > 1) {
+                    segments.add(new RouteSegmentDto(gap, "SMOOTH", 45.0, 0));
+                }
             }
 
-            if (curPoints.isEmpty() && start < poly.size()) {
-                curPoints.add(poly.get(start));
+            List<LatLng> segPoints = new ArrayList<>(poly.subList(start, end + 1));
+            if (segPoints.size() > 1) {
+                String cond = mapSpeed(interval.speed());
+                double speedKmh = speedKmhFromCondition(cond);
+                int delaySec = "JAM".equals(cond) ? 90 : ("MODERATE".equals(cond) ? 45 : 0);
+                segments.add(new RouteSegmentDto(segPoints, cond, speedKmh, delaySec));
             }
-            for (int i = start + 1; i <= end && i < poly.size(); i++) {
-                curPoints.add(poly.get(i));
-            }
-            curSpeedSum += speedKmh;
-            curCount++;
-            prevCond = cond;
+
+            lastCovered = Math.max(lastCovered, end);
         }
 
-        if (curPoints.size() > 1 && prevCond != null) {
-            double avgSpeedKmh = curCount > 0 ? curSpeedSum / curCount : 30.0;
-            segments.add(new RouteSegmentDto(
-                    curPoints,
-                    prevCond,
-                    Math.round(avgSpeedKmh * 10.0) / 10.0,
-                    0));
+        if (lastCovered < n - 1) {
+            List<LatLng> tail = new ArrayList<>(poly.subList(lastCovered, n));
+            if (tail.size() > 1) {
+                segments.add(new RouteSegmentDto(tail, "SMOOTH", 45.0, 0));
+            }
         }
 
         if (segments.isEmpty()) {
-            segments.add(new RouteSegmentDto(new ArrayList<>(poly), "SMOOTH", 50.0, 0));
+            segments.add(new RouteSegmentDto(new ArrayList<>(poly), "SMOOTH", 45.0, 0));
         }
 
         return new RouteAnalysis(segments);
